@@ -49,11 +49,11 @@ table td {
     font-size: 18px;
     height: 20px;
 }
-.clear, .sign {
+.clear, .backspace, .sign {
     color: black;
     background-color: rgb(195, 195, 195);
 }
-.clear:active, .sign:active {
+.clear:active, .backspace:active, .sign:active {
     background-color: rgb(160, 160, 160);
 }
 .operator, .equal {
@@ -102,7 +102,7 @@ table td {
     </tr>
     <tr>
         <td class="button clear">AC</td>
-        <td class="button clear">&#8592;</td>
+        <td class="button backspace">&#8592;</td>
         <td class="button sign">+/-</td>
         <td class="button operator">÷</td>
     </tr>
@@ -135,34 +135,27 @@ function BlockMove(event) {
     event.preventDefault() ;
 }
 function formatTime(string) {
-    neg = (string.slice(0,1) == '-') ? '-' : '';
-    txt = string.replace(/-/,'').replace(/^0+/,'').replace(/:/,'');
-    while (txt.length < 4) txt = "0" + txt;
-    return neg + txt.slice(0,-2) + ':' + txt.slice(-2);
+    neg = string[0] == '-' ? '-' : '';
+    txt = string.replace(/:/,'').replace(/^-?0+/,'');
+    return neg + txt.padStart(4,'0').replace(/(..$)/,':$1');
 }
 function convMin(string) {
-    if (string.indexOf(':') == -1) return string;
-    neg = (string.slice(0,1) == '-') ? '-' : '';
-    parts = string.replace(/-/,'').split(':');
-    return neg + String(parseInt(parts[1]) + (parseInt(parts[0])*60));
+    [_,neg,hour,min] = string.match(/(-)?(?:(\d*):)?(\d*)/);
+    return (neg||'') + (60 * (hour|0) + (min|0));
 }
 function convHrs(string) {
     if (string == "ERROR") return string;
-    neg = (string.slice(0,1) == '-') ? '-' : '';
-    h = String(parseInt(parseInt(string.replace(/-/,''))/60));
-    h = (h.length < 2) ? "0" + h : h;
-    m = String(parseInt(string.replace(/-/,'')) % 60);
-    m = (m.length < 2) ? "0" + m : m;
-    return neg + h + ':' + m;
+    neg = string[0] == '-' ? '-' : '';
+    min = Math.abs(string|0);
+    return neg + String(min / 60 | 0).padStart(2,0) + ':' + String(min % 60).padStart(2,0);
 }
-
 window.onload = function () {
-	if (window.navigator.standalone) {
-		//in standalone app mode, block scroll/bounce effect
+    if (window.navigator.standalone) {
+	    //in standalone app mode, block scroll/bounce effect
         document.body.addEventListener("touchmove",BlockMove);
     }
     
-    var buttons = document.getElementsByClassName('button'),
+    var table = document.getElementsByTagName('table')[0],
         lblDisplay = document.getElementsByClassName('display')[0],
         lblExpr = document.getElementsByClassName('expr')[0],
         tapOrClick = ('ontouchend' in window)? 'touchend' : 'click';
@@ -171,97 +164,90 @@ window.onload = function () {
     var operand1 = "",
         operator = 0,
         clrNext = false;
-    
-    for (var i = 0; i < buttons.length; i += 1) {
-        if (buttons[i].className == "button number") {
-            buttons[i].addEventListener(tapOrClick, numberPressed(i));
-        } else if (buttons[i].className == "button operator") {
-            buttons[i].addEventListener(tapOrClick, operatorPressed(i));
-        } else if (buttons[i].className == "button clear") {
-            buttons[i].addEventListener(tapOrClick, clearPressed(i));
-        } else if (buttons[i].className == "button sign") {
-            buttons[i].addEventListener(tapOrClick, signPressed());
-        } else if (buttons[i].innerHTML == '=') {
-            buttons[i].addEventListener(tapOrClick, equalsPressed());
+
+    table.addEventListener(tapOrClick, function(event) {
+        var target = event.target;
+        var classList = target.classList;
+        
+	    if (classList.contains('button')) {
+            if (classList.contains('number'))
+                numberPressed(target);
+            if (classList.contains('operator'))
+                operatorPressed(target);
+            if (classList.contains('clear'))
+                clearPressed(target);
+            if (classList.contains('backspace'))
+                backspacePressed(target);
+            if (classList.contains('sign'))
+                signPressed(target);
+            if (classList.contains('equal'))
+                equalsPressed(target);
         }
+    });
+    
+    function numberPressed(target) {
+        txt = target.innerHTML;
+        if (clrNext == false) txt = lblDisplay.innerHTML + txt;
+        lblDisplay.innerHTML = (operator <= 2) ? formatTime(txt) : txt;
+        clrNext = false;
     }
-    function numberPressed(i) {
-        return function () {
-            txt = buttons[i].innerHTML;
-            if (clrNext == false) txt = lblDisplay.innerHTML + txt;
-            txt = (operator <= 2) ? formatTime(txt) : String(parseInt(txt));
-            lblDisplay.innerHTML = txt
-            clrNext = false;
-        };
-    }
-    function operatorPressed(i) {
-        return function () {
-            if (operator > 0) equalsPressed()();
-            if (lblDisplay.innerHTML !== "ERROR") {
-                operand1 = convMin(lblDisplay.innerHTML);
-                operator = opDictRv[buttons[i].innerHTML];
-                clrNext = true;
-                updateToggles();
-            }
-        };
-    }
-    function clearPressed(i) {
-        return function () {
-            if (buttons[i].innerHTML == "AC") {
-                lblDisplay.innerHTML = "00:00";
-                operand1 = "0";
-                operator = 0;
-                clrNext = false;
-                updateToggles();
-            } else {  //L-arrow pressed
-                if (convMin(lblDisplay.innerHTML) !== "0" && clrNext == false) {
-                    txt = lblDisplay.innerHTML.slice(0,-1);
-                    if (operator <= 2) txt = formatTime(txt);
-                    if (txt == "-00:00" || txt == "-") txt = txt.slice(1);
-                    if (txt == "") txt = "0";
-                    lblDisplay.innerHTML = txt;
-                }
-            }
-        };
-    }
-    function signPressed() {
-        return function () {
-            txt = lblDisplay.innerHTML;
-            if (txt !== "ERROR" && convMin(txt) !== "0") {
-                if (clrNext == false || clrNext == true && operator == 0) {
-                    lblDisplay.innerHTML = (txt.slice(0,1) == '-') ? txt.replace(/-/,'') : '-' + txt;
-                }
-            }
-        };
-    }
-    function equalsPressed() {
-        return function () {
-            if (operator > 0 && clrNext == false) {
-                result = operand1 + opDict[operator] + '(' + convMin(lblDisplay.innerHTML) + ')';
-                result = String(eval(result))
-                if (isFinite(result) == false) result = "ERROR";
-                lblDisplay.innerHTML = convHrs(result);
-            }
-            operand1 = "0";
-            operator = 0;
+    function operatorPressed(target) {
+        if (operator > 0) equalsPressed()();
+        if (lblDisplay.innerHTML !== "ERROR") {
+            operand1 = convMin(lblDisplay.innerHTML);
+            operator = opDictRv[target.innerHTML];
             clrNext = true;
             updateToggles();
-        };
+        }
+    }
+    function clearPressed(target) {
+        lblDisplay.innerHTML = "00:00";
+        operand1 = "0";
+        operator = 0;
+        clrNext = false;
+        updateToggles();
+    }
+    function backspacePressed(target) {
+        if (convMin(lblDisplay.innerHTML) !== "0" && !clrNext) {
+            txt = lblDisplay.innerHTML.slice(0,-1);
+            if (operator <= 2) txt = formatTime(txt);
+            if (txt == "-00:00" || txt == "-") txt = txt.slice(1);
+            if (txt == "") txt = "0";
+            lblDisplay.innerHTML = txt;
+        }
+    }
+    function signPressed() {
+        txt = lblDisplay.innerHTML;
+        if (txt !== "ERROR" && convMin(txt) !== "0") {
+            if (!clrNext || operator == 0) {
+                lblDisplay.innerHTML = (txt[0] == '-') ? txt.replace(/-/,'') : '-' + txt;
+            }
+        }
+    }
+    function equalsPressed() {
+        if (operator > 0 && clrNext == false) {
+            result = operand1 + opDict[operator] + '(' + convMin(lblDisplay.innerHTML) + ')';
+            result = String(eval(result))
+            if (!isFinite(result)) result = "ERROR";
+            lblDisplay.innerHTML = convHrs(result);
+        }
+        operand1 = "0";
+        operator = 0;
+        clrNext = true;
+        updateToggles();
     }
     
     function updateToggles() {
         //lblExpr.innerHTML = operand1 + " " + opDict[operator];
-        operatorList = document.getElementsByClassName('operator');
-        for (var j = 0; j < operatorList.length; j += 1) {
-            if (opDictRv[operatorList[j].innerHTML] == operator) {
-                operatorList[j].classList.add("stayPressed");
+        Array.from(document.getElementsByClassName('operator')).forEach((button) => {
+            if (opDictRv[button.innerHTML] == operator) {
+                button.classList.add("stayPressed");
             } else {
-                operatorList[j].classList.remove("stayPressed");
+                button.classList.remove("stayPressed");
             }
-        }
+        });
     }
 };
 </script>
 </body>
 </html>
-

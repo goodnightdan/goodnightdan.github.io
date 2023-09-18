@@ -492,7 +492,8 @@ function StopWorker()
 function WorkerStopped()
 {
     WebWorker = null;
-    $("#stopbtn").remove();    
+    $("#stopbtn").remove();
+    document.getElementById('resetbtn').style.display = 'inline-block';
 }
 
 function MessageCb(Event)
@@ -932,6 +933,11 @@ function Debug(Msg)
     		document.getElementById('stopbtn').style.display = 'inline-block';
 
         }
+	
+	// Function to reset the page
+	function ResetPage() {
+	    location.reload(); // Reload the page
+	}
 
         // Initialize the grid when the document is ready
         $(document).ready(function () {
@@ -948,6 +954,7 @@ function Debug(Msg)
         </script>
         <p><button id="solve-btn" onclick="SolvePuzzle()">Solve</button>
         <button id="stopbtn" onclick="StopWorker()" style="display: none;">Stop</button>
+	<button id="resetbtn" onclick="ResetPage()" style="display: none;">Reset</button>
         Solutions found: <span id="solcnt">0</span></p>
         <div id="work"></div>
         <div id="results"></div>

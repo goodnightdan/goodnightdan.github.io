@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Kanoodle</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style type="text/css">
+
+		.st {
+			display: inline-table;
+			margin: 5px;
+			border: none;
+			border-collapse: collapse;
+		}
+
+		.sr {
+			height: 12px;
+		}
+
+		.sc {
+			width: 12px;
+			padding: 0px;
+		}
+
+		.wt {
+			display: inline-table;
+			margin: 5px;
+			border: none;
+			border-collapse: collapse;
+		}
+
+		.wr {
+			height: 50px;
+		}
+
+		.wc {
+			width: 50px;
+			padding: 0px;
+		}
+
+		.cI {
+			background-color: purple;
+		}
+
+		.cL {
+			background-color: blue;
+		}
+
+		.cl {
+			background-color: orange;
+		}
+
+		.ci {
+			background-color: grey;
+		}
+
+		.cN {
+			background-color: green;
+		}    
+
+		.cV {
+			background-color: lightblue;
+		}
+
+		.cP {
+			background-color: red;
+		}
+
+		.cS {
+			background-color: lightgreen;
+		}
+
+		.cU {
+			background-color: yellow;
+		}
+
+		.cW {
+			background-color: magenta;
+		}
+
+		.cX {
+			background-color: darkgrey;
+		}
+
+		.cY {
+			background-color: pink;
+		}
+
+		.btn {
+			border-top: none;
+		}
+
+		.bts {
+			border-top: 1px solid black;
+		}
+
+		.btd {
+			border-top: 1px dotted black;
+		}
+
+		.bbn {
+			border-bottom: none;
+		}
+
+		.bbs {
+			border-bottom: 1px solid black;
+		}
+
+		.bbd {
+			border-bottom: 1px dotted black;
+		}
+
+		.bln {
+			border-left: none;
+		}
+
+		.bls {
+			border-left: 1px solid black;
+		}
+
+		.bld {
+			border-left: 1px dotted black;
+		}
+
+		.brn {
+			border-right: none;
+		}
+
+		.brs {
+			border-right: 1px solid black;
+		}
+
+		.brd {
+			border-right: 1px dotted black;
+		}
+        .grid-button {
+            width: 50px;
+            height: 50px;
+        }
+        </style>
+</head>
+<body>
+    <!-- Add a container for the grid -->
+    <div id="grid-container">
+        <!-- Dynamically create the grid based on BoardConfig size -->
+    </div>
+
+    <!-- Add a button to cycle through the pentominoes -->
+    <button id="cycle-btn" onclick="cyclePentomino()">Cycle Pentomino</button>
+
+    <!-- Add a Solve button -->
+    <button id="solve-btn" onclick="SolvePuzzle()">Solve</button>
+
+        <script src="jquery-1.8.3.min.js"></script>
+        <script>
+        
+var BoardConfig = [
+	"-----------",
+	"-----------",
+	"-----------",
+	"-----------",
+	"-----------",
+];
+
+var PentominoesMaster = [
+{
+    Name: "L",  // dark blue
+    Layout: [
+    [1,1],
+    [1,2],
+    [1,3],
+    [1,4],[2,4]
+    ]},
+{
+    Name: "l",  // orange
+    Layout: [
+    [1,1],
+    [1,2],
+    [1,3],[2,3]
+    ]},
+{
+    Name: "i",  // light gray
+    Layout: [
+    [1,1],
+    [1,2],[2,2]
+    ]},
+{
+    Name: "N",  // green
+    Layout: [
+          [2,1],
+          [2,2],
+    [1,3],[2,3],
+    [1,4]
+    ]},
+{
+    Name: "V",  // light blue
+    Layout: [
+    [1,1],
+    [1,2],
+    [1,3],[2,3],[3,3]
+    ]},
+{
+    Name: "P",  // red
+    Layout: [
+    [1,1],[2,1],
+    [1,2],[2,2],
+    [1,3]
+    ]},
+{
+    Name: "S",  // light green
+    Layout: [
+    [1,1],[2,1],
+    [1,2],[2,2],
+    ]},
+{
+    Name: "U",  // yellow
+    Layout: [
+    [1,1],      [3,1],
+    [1,2],[2,2],[3,2]
+    ]},
+{
+    Name: "W",  // magenta
+    Layout: [
+    [1,1],
+    [1,2],[2,2],
+          [2,3],[3,3]
+    ]},
+{
+    Name: "X",  // medium gray
+    Layout: [
+          [2,1],
+    [1,2],[2,2],[3,2],
+          [2,3]
+    ]},
+{
+    Name: "Y",  // light pink
+    Layout: [
+    [1,1],
+    [1,2],
+    [1,3],[2,3],
+    [1,4]
+    ]},
+{
+    Name: "I",  // purple
+    Layout: [
+    [1,1],
+    [1,2],
+    [1,3],
+    [1,4],
+    ]},
+];
+
+var Pentominoes = []
+
+//DK EDIT START
+function removeShapes(){
+	function getPlacedShapes(inputArray) {
+	  const uSet = new Set(inputArray.join("").replace(/-/g, ''));
+	  return Array.from(uSet);
+	}
+
+	var ExcludeShapes = getPlacedShapes(BoardConfig);
+
+	function filterPentominoes(excludeShapes, pentominoes) {
+	  return pentominoes.filter((pentomino) => !excludeShapes.includes(pentomino.Name));
+	}
+
+	Pentominoes = filterPentominoes(ExcludeShapes, PentominoesMaster);
+}
+//DK EDIT END
+
+var Shapes = [];
+
+var Board = {};
+
+var WebWorker = null;
+var Solutions = 0;
+var SolHash = {};
+
+
+
+
+
+var kanoodlejsCode = `(function() {
+
+// Tweakables
+var ShowWork = true;
+var FPSTarget = 30;
+// End of tweakables
+
+var LastUpdateTime = 0;
+
+Object.prototype.clone = function() {
+  var newObj = (this instanceof Array) ? [] : {};
+  for (i in this) {
+    if (i == 'clone') continue;
+    if (this[i] && typeof this[i] == "object") {
+      newObj[i] = this[i].clone();
+    } else newObj[i] = this[i]
+  } return newObj;
+};
+
+Array.prototype.remove = function(from, to) {
+  var rest = this.slice((to || from) + 1 || this.length);
+  this.length = from < 0 ? this.length + from : from;
+  return this.push.apply(this, rest);
+};
+
+self.addEventListener('message', MsgHandler);
+
+function MsgHandler(Event)
+{
+    var Data = Event.data;
+    
+    switch(Data.MsgType){
+        case "start":
+            StartFit(JSON.parse(Data.Shapes), JSON.parse(Data.Board));
+            break;
+        default:
+            Debug("Unrecognised command " + Data.MsgType);
+            break;
+    }
+}
+
+
+function StartFit(Shapes, Board)
+{    
+    var ShapeList = [];
+    for(i=0; i<Shapes.length; i++){
+//  						      if(Shapes[i].Name !== "L"){ ShapeList.push(i); }
+	    ShapeList.push(i);
+    }
+		
+    FitShapes(Shapes, Board, 0, 0, ShapeList);
+
+    self.postMessage({'MsgType': "finished"});
+}
+
+function FitShapes(Shapes, Board, BoardX, BoardY, ShapeList)
+{
+    var BoardLayout = Board.Layout;
+    var Pt;
+    var DateNow;
+    var TimeNow;
+    
+    // Find free square
+    do{
+        if(BoardLayout[BoardX][BoardY] == -1){
+            // Fit shape here
+            break;
+        }
+        else{
+            if(++BoardX >= Board.Width){
+                BoardX=0;
+                if(++BoardY >= Board.Height){
+                    Debug("OUT OF SPACES!?");
+                    return;
+                }
+            }
+        }
+    } while(1);
+    
+    for(var ListItem=0; ListItem<ShapeList.length; ListItem++){
+        var ShapeNo = ShapeList[ListItem];
+        var Shape = Shapes[ShapeNo];
+        var Layouts = Shape.Layout;
+        for(var LayoutNo=0; LayoutNo<Layouts.length; LayoutNo++){
+            var Layout = Layouts[LayoutNo];
+            for(var PtNo=0; PtNo<Layout.length; PtNo++){
+                OffX = BoardX - Layout[PtNo][0];
+                OffY = BoardY - Layout[PtNo][1];
+                Fit = true;
+                for(Pt=0; Pt<Layout.length; Pt++){
+                    PtX = OffX + Layout[Pt][0];
+                    PtY = OffY + Layout[Pt][1];
+                    if(PtX<0 || PtX>=Board.Width || PtY<0 || PtY>=Board.Height){
+                        Fit = false;
+                        break;
+                    }
+                    if(BoardLayout[PtX][PtY] != -1){
+                        Fit = false;
+                        break;
+                    }
+                }
+                if(Fit){
+                    // The shape fits here
+                    var NewBoard = Board.clone();
+                    // Update the board
+                    for(Pt=0; Pt<Layout.length; Pt++){
+                        PtX = OffX + Layout[Pt][0];
+                        PtY = OffY + Layout[Pt][1];
+                        NewBoard.Layout[PtX][PtY] = ShapeNo;
+                    }      
+                    // Update the shape list
+                    var NewShapeList = ShapeList.clone();
+                    NewShapeList.remove(ListItem);
+//                    Debug("Fit shape " + Shape.Name + "(" + ShapeNo + ") layout " + LayoutNo + " point " + PtNo + " at " + BoardX + ","+BoardY);
+                    if(NewShapeList.length == 0){
+                        // Got a solution!
+                        self.postMessage({'MsgType': "solution", 'Board': JSON.stringify(NewBoard)});
+                    }
+                    else{
+                        // Recurse
+                        if(ShowWork){
+                            DateNow = new Date();
+                            TimeNow = DateNow.getTime();
+                            if((TimeNow - LastUpdateTime) > (1000 / FPSTarget)){
+                                self.postMessage({'MsgType': "workupdate", 'Board': JSON.stringify(NewBoard)});
+                                LastUpdateTime = TimeNow;
+                            }
+                        }
+                        FitShapes(Shapes, NewBoard, BoardX, BoardY, NewShapeList);
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+function Debug(Msg)
+{
+    self.postMessage({'MsgType': "debug", 'Msg': Msg});
+}
+})();`
+
+
+var kanoodleBlob = new Blob([kanoodlejsCode], { type: 'application/javascript' });
+var kanoodleURL = URL.createObjectURL(kanoodleBlob);
+
+
+
+Object.prototype.clone = function() {
+  var newObj = (this instanceof Array) ? [] : {};
+  for (i in this) {
+    if (i == 'clone') continue;
+    if (this[i] && typeof this[i] == "object") {
+      newObj[i] = this[i].clone();
+    } else newObj[i] = this[i]
+  } return newObj;
+};
+
+function StartWorker()
+{
+    Initialise();
+    
+    if(typeof(Worker)!=="undefined"){
+        WebWorker = new Worker(kanoodleURL);
+    
+        WebWorker.addEventListener('message', MessageCb, false);
+    
+        WebWorker.postMessage({'MsgType': "start", 'Shapes': JSON.stringify(Shapes), 'Board': JSON.stringify(Board)});
+    }
+    else{
+        WorkerStopped();
+        alert("This browser does not support Web Workers! Try Chrome, Firefox, Opera or Safari");
+    }
+}
+
+function StopWorker()
+{
+    WebWorker.terminate();
+    WorkerStopped();
+}
+
+function WorkerStopped()
+{
+    WebWorker = null;
+    $("#stopbtn").remove();    
+}
+
+function MessageCb(Event)
+{
+    var Data = Event.data;
+    var Board;
+    
+    switch(Data.MsgType){
+    case "debug":
+        Debug(Data.Msg);
+        break;
+        
+    case "solution":
+        Board = JSON.parse(Data.Board);
+        if(!DuplicateSolution(Board, Shapes)){
+            DumpBoard(Board, Shapes);
+        }
+        break;
+        
+    case "workupdate":
+        Board = JSON.parse(Data.Board);
+        UpdateWorkBoard(Board);
+        break;
+
+    case "finished":
+        StopWorker();
+        break;
+        
+    }
+}
+
+function DuplicateSolution(Board, Shapes)
+{
+    var Dupe = false;
+    var String = "";
+    var CurShape;
+    var Row;
+    var Col;
+    
+    for(Row=0; Row<Board.Height; Row++){
+        for(Col=0; Col<Board.Width; Col++){
+            CurShape = Board.Layout[Col][Row];
+            if(CurShape>=0) String += Shapes[CurShape].Name;
+        }
+    }
+
+    if(SolHash[String] === undefined){
+        SolHash[String] = null;
+    }
+    else{
+        Dupe = true;
+    }
+
+    return Dupe;
+}
+
+function Initialise()
+{
+    var CurShape;
+    var i,j,k;
+    
+//    Debug("Using " + Pentominoes.length + " pentominoes");
+    for(i=0; i<Pentominoes.length; i++){
+    	
+        Shapes[i] = {}
+        Shapes[i].Layout = [];
+        Shapes[i].Name = Pentominoes[i].Name;
+        Shapes[i].Colour = Pentominoes[i].Colour;
+        for(k=0; k<3; k++){
+            CurShape = Pentominoes[i].Layout;
+            switch(k){
+                case 0:
+                    CurShape = ShiftShape(CurShape);
+                    CurShape.sort(LocCompare);
+                    break;
+                case 1:
+                    CurShape = FlipShapeX(CurShape);
+                    break;
+                case 2:
+                    CurShape = FlipShapeY(CurShape);
+                    break;
+            }
+            for(j=0; j<4; j++){
+                if(!DuplicateLayout(Shapes[i].Layout, CurShape)){
+                    AddLayout(i, CurShape);
+                }
+                CurShape = RotateShape(CurShape);
+            }
+        }
+/*
+        Debug("Pentomino " + Pentominoes[i].Name + " has " + Shapes[i].Layout.length + " layouts");
+        for(var l=0; l<Shapes[i].Layout.length; l++){
+            Debug(Shapes[i].Layout[l].toString())
+        }
+*/
+    }
+    
+    Board.Width = 0;
+    Board.Height = BoardConfig.length;
+    for(i=0; i<BoardConfig.length; i++){
+        Board.Width = Math.max(Board.Width, BoardConfig[i].length);
+    }
+
+    Board.Layout = [];
+    for(i=0; i<Board.Width; i++){
+        var Col = new Array();
+        for(j=0; j<Board.Height; j++){
+            if(BoardConfig[j].substring(i,i+1) == "-") Col.push(-1);
+            else Col.push(-2);
+        }
+        Board.Layout.push(Col);
+    }
+    
+    DrawWorkBoard(Board);
+}
+
+function AddLayout(ShapeNo, Layout)
+{
+    Shapes[ShapeNo].Layout.push(Layout);
+}
+
+function DuplicateLayout(Layouts, Shape)
+{
+    for(var i=0; i<Layouts.length; i++){
+        if(CompareShape(Layouts[i], Shape)) return true;
+    }
+    
+    return false;
+}
+
+function CompareShape(Shape1, Shape2)
+{
+    if(Shape1.length != Shape2.length) return false;
+    
+    for(var i=0; i<Shape1.length; i++){
+        if(Shape1[i][0] != Shape2[i][0]) return false;
+        if(Shape1[i][1] != Shape2[i][1]) return false;
+    }
+    
+    return true;
+}
+
+function ShiftShape(Shape)
+{
+    var NewShape = Shape.clone();
+    var MinX = NewShape[0][0];
+    var MinY = NewShape[0][1];
+    var i;
+    
+    for(i=0; i<NewShape.length; i++){
+        MinX = Math.min(MinX, NewShape[i][0]);
+        MinY = Math.min(MinY, NewShape[i][1]);
+    }
+    
+    for(i=0; i<NewShape.length; i++){
+        NewShape[i][0] -= MinX;
+        NewShape[i][1] -= MinY;
+    }    
+    
+    return NewShape;
+}
+
+function RotateShape(Shape)
+{
+    var NewShape = Shape.clone();
+    
+    for(var i=0; i<NewShape.length; i++){
+        var x = NewShape[i][0];
+        var y = NewShape[i][1];
+        NewShape[i][0] = 6-y;
+        NewShape[i][1] = x;
+    }
+    NewShape.sort(LocCompare);
+    
+    return ShiftShape(NewShape);
+}
+
+function FlipShapeX(Shape)
+{
+    var NewShape = Shape.clone();
+    
+    for(var i=0; i<NewShape.length; i++){
+        NewShape[i][0] = 6 - NewShape[i][0];
+    }
+    NewShape.sort(LocCompare);
+    
+    return ShiftShape(NewShape);    
+}
+
+function FlipShapeY(Shape)
+{
+    var NewShape = Shape.clone();
+    
+    for(var i=0; i<NewShape.length; i++){
+        NewShape[i][1] = 6 - NewShape[i][1];
+    }
+    NewShape.sort(LocCompare);
+
+    return ShiftShape(NewShape);        
+}
+
+function LocCompare(Loc1, Loc2)
+{
+    if(Loc1[0] < Loc2[0]) return -1;
+    if(Loc1[0] > Loc2[0]) return 1;
+    if(Loc1[1] < Loc2[1]) return -1;
+    if(Loc1[1] > Loc2[1]) return 1;
+    return 0;
+}
+
+function DumpBoard(Board, Shapes)
+{
+    var Row;
+    var Col;
+    var Table;
+    
+    Table = '<table class="st">';
+    for(Row=0; Row<Board.Height; Row++){
+        Table += '<tr class="sr">';
+        for(Col=0; Col<Board.Width; Col++){
+            Table += '<td class="sc ' + CellClass(Board, Col, Row) + '"/>';
+        }
+        Table += "</tr>"
+    }    
+    Table += "</table>";
+    
+    $("#results").append(Table);    
+    
+    $("#solcnt").text(++Solutions);
+}
+
+function DrawWorkBoard(Board)
+{
+    var Row;
+    var Col;
+    var Table;
+    
+    Table = '<table id="worktable" class="wt">';
+    for(Row=0; Row<Board.Height; Row++){
+        Table += '<tr class="wr">';
+        for(Col=0; Col<Board.Width; Col++){
+            Table += '<td id="workcell' + Col + "x" + Row + '" class="wc"/>';
+        }
+        Table += "</tr>"
+    }    
+    Table += "</table>";
+    
+    $("#work").append(Table);    
+}
+
+function UpdateWorkBoard(Board)
+{
+    var Row;
+    var Col;
+    var Class;
+    
+    for(Row=0; Row<Board.Height; Row++){
+        for(Col=0; Col<Board.Width; Col++){
+            Class = CellClass(Board, Col, Row);
+            $("#workcell" + Col + "x" + Row).attr('class', "wc " + Class);
+        }
+    }    
+}
+
+function CellClass(Board, Col, Row)
+{
+    var CurShape;
+    var Class;
+    
+    CurShape = Board.Layout[Col][Row];
+
+    if(CurShape == -2 && (Row == 0 || Board.Layout[Col][Row-1] == -2)) Class = " btn";
+    else if(Row>0 && Board.Layout[Col][Row-1] == CurShape) Class = " btd";
+    else Class = " bts";
+
+    if(CurShape == -2 && (Row == Board.Height-1 || Board.Layout[Col][Row+1] == -2)) Class += " bbn";
+    else if(Row<Board.Height-1 && Board.Layout[Col][Row+1] == CurShape) Class += " bbd";
+    else Class += " bbs";
+
+    if(CurShape == -2 && (Col == 0 || Board.Layout[Col-1][Row] == -2)) Class += " bln";
+    else if(Col>0 && Board.Layout[Col-1][Row] == CurShape) Class += " bld";
+    else Class += " bls";
+
+    if(CurShape == -2 && (Col == Board.Width-1 || Board.Layout[Col+1][Row] == -2)) Class += " brn";
+    else if(Col<Board.Width-1 && Board.Layout[Col+1][Row] == CurShape) Class += " brd";
+    else Class += " brs";
+
+    if(CurShape>=0) Class += " c" + Shapes[CurShape].Name;
+
+    return Class;
+}
+
+function Debug(Msg)
+{
+    $("#debug").append('<p class="debug">' + Msg + "</p>");    
+}
+
+
+
+        var activePentominoIndex = 0;
+        var pentominoes = ['L', 'l', 'i', 'N', 'V', 'P', 'S', 'U', 'W', 'X', 'Y', 'I'];
+        var gridCells = [];
+
+		var pentominoColors = {
+			I: 'purple',
+			L: 'blue',
+			l: 'orange',
+			i: 'grey',
+			N: 'green',
+			V: 'lightblue',
+			P: 'red',
+			S: 'lightgreen',
+			U: 'yellow',
+			W: 'magenta',
+			X: 'darkgrey',
+			Y: 'pink'
+		};
+
+        // Function to create the grid buttons
+        function createGrid() {
+            var gridContainer = document.getElementById('grid-container');
+            var numRows = BoardConfig.length;
+            var numCols = BoardConfig[0].length;
+
+            for (var i = 0; i < numRows; i++) {
+                var row = document.createElement('div');
+                row.className = 'grid-row';
+
+                for (var j = 0; j < numCols; j++) {
+                    var cell = document.createElement('button');
+                    cell.className = 'grid-button';
+                    cell.onclick = function () {
+                        toggleCell(this);
+                    };
+                    cell.textContent = '-'
+                    row.appendChild(cell);
+                    gridCells.push(cell);
+                }
+
+                gridContainer.appendChild(row);
+            }
+        }
+
+        // Function to toggle cell content (pentominoes)
+        function toggleCell(cell) {
+            var currentIndex = activePentominoIndex;
+            var currentPentomino = pentominoes[currentIndex];
+            var cellText = cell.textContent.trim();
+
+            if (cellText === currentPentomino) {
+                // Clear the cell if the active pentomino is already placed
+                cell.textContent = '-';
+                cell.style.backgroundColor = '';
+            } else {
+                // Place the active pentomino in the cell
+                cell.textContent = currentPentomino;
+                cell.style.backgroundColor = pentominoColors[currentPentomino];
+            }
+        }
+
+		// Function to cycle through the pentominoes
+		function cyclePentomino() {
+			activePentominoIndex = (activePentominoIndex + 1) % pentominoes.length;
+			var currentPentomino = pentominoes[activePentominoIndex];
+			var currentPentominoColor = pentominoColors[currentPentomino];
+
+			var cycleBtn = document.getElementById('cycle-btn');
+			cycleBtn.textContent = 'Active Pentomino: ' + currentPentomino;
+			cycleBtn.style.backgroundColor = currentPentominoColor;
+		}
+
+        // Function to populate BoardConfig based on grid buttons
+        function populateBoardConfig() {
+            var numRows = BoardConfig.length;
+            var numCols = BoardConfig[0].length;
+            var newBoardConfig = [];
+
+            for (var i = 0; i < numRows; i++) {
+                var newRow = '';
+
+                for (var j = 0; j < numCols; j++) {
+                    var cell = gridCells[i * numCols + j];
+                    var cellText = cell.textContent.trim();
+                    newRow += cellText || '-';
+                }
+
+                newBoardConfig.push(newRow);
+            }
+
+            // Update BoardConfig
+            BoardConfig = newBoardConfig;
+            removeShapes();
+
+        }
+
+        // Function to start the puzzle solving
+        function SolvePuzzle() {
+            populateBoardConfig(); // Update BoardConfig based on user selections
+            StartWorker(); // Start the worker to solve the puzzle
+        }
+
+        // Initialize the grid when the document is ready
+        $(document).ready(function () {
+            createGrid();
+            cyclePentomino();
+        });
+
+
+
+
+        </script>
+        <script>
+
+        </script>
+        <p>Solutions found: <span id="solcnt">0</span><button id="stopbtn" onclick="StopWorker()">Stop</button></p>
+        <div id="work"></div>
+        <div id="results"></div>
+        <div id="debug"></div>
+    </body>
+</html>
